@@ -4,6 +4,57 @@
   
     
     <entry>
+      <title>使用Keras库中的LSTM模型进行依据时间的预测</title>
+      <link href="/2023/08/17/py817-2/"/>
+      <url>/2023/08/17/py817-2/</url>
+      
+        <content type="html"><![CDATA[<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">import pandas as pd</span><br><span class="line">from sklearn.preprocessing import MinMaxScaler</span><br><span class="line">from sklearn.metrics import mean_squared_error</span><br><span class="line">from keras.models import Sequential</span><br><span class="line">from keras.layers import LSTM, Dense</span><br><span class="line">import numpy as np</span><br><span class="line">import matplotlib.pyplot as plt</span><br><span class="line">filepath = &#x27;/data810_2.xlsx&#x27;</span><br><span class="line">data = pd.read_excel(filepath)</span><br><span class="line">data[&#x27;Time&#x27;] = pd.to_datetime(data[&#x27;Time&#x27;], format=&#x27;%Y-%m-%d-%H.%M.%S.%f&#x27;)</span><br><span class="line">data = data.sort_values(&#x27;Time&#x27;)</span><br><span class="line">values = data[&#x27;Data&#x27;].values.reshape(-1, 1)</span><br><span class="line">scaler = MinMaxScaler()</span><br><span class="line">scaled = scaler.fit_transform(values)</span><br><span class="line"></span><br><span class="line">train_size = int(len(scaled) * 0.67)</span><br><span class="line">train, test = scaled[0:train_size], scaled[train_size:]</span><br><span class="line"></span><br><span class="line">def create_dataset(dataset, look_back=1):</span><br><span class="line">    X, Y = [], []</span><br><span class="line">    for i in range(len(dataset) - look_back - 1):</span><br><span class="line">        a = dataset[i:(i + look_back), 0]</span><br><span class="line">        X.append(a)</span><br><span class="line">        Y.append(dataset[i + look_back, 0])</span><br><span class="line">    return np.array(X), np.array(Y)</span><br><span class="line"></span><br><span class="line">look_back = 3</span><br><span class="line">trainX, trainY = create_dataset(train, look_back)</span><br><span class="line">testX, testY = create_dataset(test, look_back)</span><br><span class="line"></span><br><span class="line">trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))</span><br><span class="line">testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))</span><br><span class="line"></span><br><span class="line">model = Sequential()</span><br><span class="line">model.add(LSTM(50, input_shape=(1, look_back)))</span><br><span class="line">model.add(Dense(1))</span><br><span class="line">model.compile(loss=&#x27;mean_squared_error&#x27;, optimizer=&#x27;adam&#x27;)</span><br><span class="line">model.fit(trainX, trainY, epochs=100, batch_size=1)</span><br><span class="line"></span><br><span class="line">trainPredict = model.predict(trainX)</span><br><span class="line">testPredict = model.predict(testX)</span><br><span class="line"></span><br><span class="line">trainPredict = scaler.inverse_transform(trainPredict)</span><br><span class="line">trainY = scaler.inverse_transform([trainY])</span><br><span class="line">testPredict = scaler.inverse_transform(testPredict)</span><br><span class="line">testY = scaler.inverse_transform([testY])</span><br><span class="line"></span><br><span class="line">trainScore = np.sqrt(mean_squared_error(trainY[0], trainPredict[:, 0]))</span><br><span class="line">print(&#x27;Train Score: %.2f RMSE&#x27; % (trainScore))</span><br><span class="line">testScore = np.sqrt(mean_squared_error(testY[0], testPredict[:, 0]))</span><br><span class="line">print(&#x27;Test Score: %.2f RMSE&#x27; % (testScore))</span><br><span class="line"></span><br><span class="line">plt.plot(testY[0], label=&#x27;Actual&#x27;)</span><br><span class="line">plt.plot(testPredict[:, 0], label=&#x27;Predicted&#x27;)</span><br><span class="line">plt.legend()</span><br><span class="line">plt.show()</span><br><span class="line"></span><br></pre></td></tr></table></figure>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> python, LSTM </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>利用python寻找数据中的异常数据</title>
+      <link href="/2023/08/17/py817-1/"/>
+      <url>/2023/08/17/py817-1/</url>
+      
+        <content type="html"><![CDATA[<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">import pandas as pd</span><br><span class="line"></span><br><span class="line"># 假设你的数据存在一个名为&#x27;data.csv&#x27;的CSV文件中，且有三列：&#x27;组编号&#x27;, &#x27;时间&#x27;, &#x27;数值&#x27;</span><br><span class="line">df = pd.read_csv(&#x27;TenMinuteData.csv&#x27;)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">def find_outliers(group):</span><br><span class="line">    Q1 = group.quantile(0.25)</span><br><span class="line">    Q3 = group.quantile(0.75)</span><br><span class="line">    IQR = Q3 - Q1</span><br><span class="line"></span><br><span class="line">    lower_bound = Q1 - 1.5 * IQR</span><br><span class="line">    upper_bound = Q3 + 1.5 * IQR</span><br><span class="line"></span><br><span class="line">    return group[(group &lt; lower_bound) | (group &gt; upper_bound)]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">outliers = df.groupby(&#x27;PARAMID&#x27;)[&#x27;VALUE&#x27;].apply(find_outliers).reset_index()</span><br><span class="line"></span><br><span class="line"># 保存到Excel文件</span><br><span class="line">outliers.to_excel(&quot;outliers.xlsx&quot;, index=False, engine=&#x27;openpyxl&#x27;)</span><br></pre></td></tr></table></figure>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> python </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>CloudFactory1</title>
+      <link href="/2023/06/01/CloudFactory1/"/>
+      <url>/2023/06/01/CloudFactory1/</url>
+      
+        <content type="html"><![CDATA[]]></content>
+      
+      
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Stable Diffusion 提示词（Prompt）教学</title>
       <link href="/2023/05/04/Novel/"/>
       <url>/2023/05/04/Novel/</url>
